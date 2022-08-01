@@ -1,0 +1,20 @@
+
+Microsoft Visual Studio Solution File, Format Version 11.00
+# Visual Studio 2010
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ImageTools", "ImageTools.csproj", "{1AB5538E-40F6-483B-9711-A09F2668977F}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{1AB5538E-40F6-483B-9711-A09F2668977F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AB5538E-40F6-483B-9711-A09F2668977F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AB5538E-40F6-483B-9711-A09F2668977F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AB5538E-40F6-483B-9711-A09F2668977F}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
