@@ -4,6 +4,7 @@ using System.Drawing;
 using System.Drawing.Drawing2D;
 using System.Drawing.Imaging;
 using System.Runtime.InteropServices;
+using System.Security.Cryptography.X509Certificates;
 
 namespace ImageTools
 {
@@ -15,6 +16,18 @@ namespace ImageTools
         return 0;
       return ((int) a & (int) byte.MaxValue) + b > (int) byte.MaxValue ? byte.MaxValue : (byte) ((uint) a + (uint) b);
     }
+        public static DirectBitmap Crop(this DirectBitmap bmp, int x1, int y1, Size s)
+        {
+            DirectBitmap tmp = new DirectBitmap(s.Width, s.Height);
+            for(int y = y1; y < s.Height + y1; y++)
+            {
+                for (int x = x1; x < s.Width + x1; x++)
+                {
+                    tmp.SetPixel(x - x1, y - y1, bmp.GetPixel(x, y));
+                }
+            }
+            return tmp;
+        }
     public static DirectBitmap ToDirectBitmap(this Bitmap bmp)
         {
             DirectBitmap directBitmap = new DirectBitmap(bmp.Width, bmp.Height);
@@ -185,7 +198,198 @@ namespace ImageTools
       }
       return colorList.ToArray();
     }
-    public class DirectBitmap : IDisposable
+        public static double[,] GaussianBlur(int lenght, double weight)
+        {
+            double[,] kernel = new double[lenght, lenght];
+            double kernelSum = 0;
+            int foff = (lenght - 1) / 2;
+            double distance = 0;
+            double constant = 1d / (2 * Math.PI * weight * weight);
+            for (int y = -foff; y <= foff; y++)
+            {
+                for (int x = -foff; x <= foff; x++)
+                {
+                    distance = ((y * y) + (x * x)) / (2 * weight * weight);
+                    kernel[y + foff, x + foff] = constant * Math.Exp(-distance);
+                    kernelSum += kernel[y + foff, x + foff];
+                }
+            }
+            for (int y = 0; y < lenght; y++)
+            {
+                for (int x = 0; x < lenght; x++)
+                {
+                    kernel[y, x] = kernel[y, x] * 1d / kernelSum;
+                }
+            }
+            return kernel;
+        }
+        public static Bitmap ConvolutionFilter(Bitmap sourceBitmap, double[,] filterMatrix, int mult = 1, double factor = 1, int bias = 0)
+        {
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0,
+                                     sourceBitmap.Width, sourceBitmap.Height),
+                                                       ImageLockMode.ReadOnly,
+                                                 System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            double blue = 0.0;
+            double green = 0.0;
+            double red = 0.0;
+            double alpha = 0.0;
+
+            int filterWidth = filterMatrix.GetLength(1);
+            int filterHeight = filterMatrix.GetLength(0);
+
+            int filterOffset = (filterWidth - 1) / 2;
+            int calcOffset = 0;
+
+            int byteOffset = 0;
+
+            for (int offsetY = filterOffset; offsetY < sourceBitmap.Height - filterOffset; offsetY++)
+            {
+                for (int offsetX = filterOffset; offsetX < sourceBitmap.Width - filterOffset; offsetX++)
+                {
+                    blue = 0;
+                    green = 0;
+                    red = 0;
+                    alpha = 0;
+
+                    byteOffset = offsetY * sourceData.Stride + offsetX * 4;
+
+                    for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
+                    {
+                        for (int filterX = -filterOffset; filterX <= filterOffset; filterX++)
+                        {
+                            calcOffset = byteOffset +
+                                         (filterX * 4) +
+                                         (filterY * sourceData.Stride);
+
+                            blue += (double)(pixelBuffer[calcOffset]) *
+                                    filterMatrix[filterY + filterOffset,
+                                                        filterX + filterOffset];
+
+                            green += (double)(pixelBuffer[calcOffset + 1]) *
+                                     filterMatrix[filterY + filterOffset,
+                                                        filterX + filterOffset];
+
+                            red += (double)(pixelBuffer[calcOffset + 2]) *
+                                   filterMatrix[filterY + filterOffset,
+                                                      filterX + filterOffset];
+
+                            alpha += (double)(pixelBuffer[calcOffset + 3]) *
+                                   filterMatrix[filterY + filterOffset,
+                                                      filterX + filterOffset];
+                        }
+                    }
+
+                    blue = factor * blue + bias;
+                    green = factor * green + bias;
+                    red = factor * red + bias;
+                    alpha = factor * alpha + bias;
+
+                    alpha *= mult;
+
+                    blue = (blue > 255 ? 255 : (blue < 0 ? 0 : blue));
+
+                    green = (green > 255 ? 255 : (green < 0 ? 0 : green));
+
+                    red = (red > 255 ? 255 : (red < 0 ? 0 : red));
+
+                    alpha = (alpha > 255 ? 255 : (alpha < 0 ? 0 : alpha));
+
+                    resultBuffer[byteOffset] = (byte)(blue);
+                    resultBuffer[byteOffset + 1] = (byte)(green);
+                    resultBuffer[byteOffset + 2] = (byte)(red);
+                    resultBuffer[byteOffset + 3] = (byte)(alpha);
+                }
+            }
+
+
+            Bitmap resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
+
+            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0, resultBitmap.Width, resultBitmap.Height), ImageLockMode.WriteOnly,
+                                                 System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
+            resultBitmap.UnlockBits(resultData);
+
+            return resultBitmap;
+        }
+        public static Bitmap AOConvolutionFilter(Bitmap sourceBitmap, double[,] filterMatrix, Color col, int mult = 1, double factor = 1, int bias = 0)
+        {
+            BitmapData sourceData = sourceBitmap.LockBits(new Rectangle(0, 0, sourceBitmap.Width, sourceBitmap.Height), ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+
+            byte[] pixelBuffer = new byte[sourceData.Stride * sourceData.Height];
+            byte[] resultBuffer = new byte[sourceData.Stride * sourceData.Height];
+
+            Marshal.Copy(sourceData.Scan0, pixelBuffer, 0, pixelBuffer.Length);
+            sourceBitmap.UnlockBits(sourceData);
+
+            double alpha = 0.0;
+
+            int filterWidth = filterMatrix.GetLength(1);
+            int filterHeight = filterMatrix.GetLength(0);
+
+            int filterOffset = (filterWidth - 1) / 2;
+            int calcOffset = 0;
+
+            int byteOffset = 0;
+
+            for (int offsetY = filterOffset; offsetY < sourceBitmap.Height - filterOffset; offsetY++)
+            {
+                for (int offsetX = filterOffset; offsetX < sourceBitmap.Width - filterOffset; offsetX++)
+                {
+                    alpha = 0;
+
+                    byteOffset = offsetY * sourceData.Stride + offsetX * 4;
+
+                    for (int filterY = -filterOffset; filterY <= filterOffset; filterY++)
+                    {
+                        for (int filterX = -filterOffset; filterX <= filterOffset; filterX++)
+                        {
+                            calcOffset = byteOffset +
+                                         (filterX * 4) +
+                                         (filterY * sourceData.Stride);
+                            alpha += (double)(pixelBuffer[calcOffset + 3]) *
+                                   filterMatrix[filterY + filterOffset,
+                                                      filterX + filterOffset];
+                        }
+                    }
+                    alpha = factor * alpha + bias;
+                    alpha *= mult;
+                    alpha = (alpha > 255 ? 255 : (alpha < 0 ? 0 : alpha));
+
+                    resultBuffer[byteOffset] = (byte)(col.B);
+                    resultBuffer[byteOffset + 1] = (byte)(col.G);
+                    resultBuffer[byteOffset + 2] = (byte)(col.R);
+                    resultBuffer[byteOffset + 3] = (byte)(alpha);
+                }
+            }
+
+
+            Bitmap resultBitmap = new Bitmap(sourceBitmap.Width, sourceBitmap.Height);
+
+            BitmapData resultData = resultBitmap.LockBits(new Rectangle(0, 0, resultBitmap.Width, resultBitmap.Height), ImageLockMode.WriteOnly,
+                                                 System.Drawing.Imaging.PixelFormat.Format32bppArgb);
+
+            Marshal.Copy(resultBuffer, 0, resultData.Scan0, resultBuffer.Length);
+            resultBitmap.UnlockBits(resultData);
+
+            return resultBitmap;
+        }
+        public static Bitmap ApplyBlur(this Bitmap src, int length, double weight, Color col, bool alphaOnly = false, int mult = 1)
+        {
+            if (!alphaOnly) { return ConvolutionFilter(src, GaussianBlur(length, weight), mult); }
+            return AOConvolutionFilter(src, GaussianBlur(length, weight), col, mult);
+
+        }
+        public class DirectBitmap : IDisposable
     {
       public Bitmap Bitmap { get; private set; }
 
