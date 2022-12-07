@@ -419,7 +419,7 @@ namespace ImageTools
             return Color.FromArgb(colorIncidence.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value).First().Key);
         }
 
-        public static List<Color> GetColourPalette(this DirectBitmap dbmp, int count = 0)
+        public static List<Color> GetColourPalette(this DirectBitmap dbmp, int count, int tolerance = 0)
         {
             var colorIncidence = new Dictionary<int, int>();
             for (var x = 0; x < dbmp.Width; x++)
@@ -432,6 +432,15 @@ namespace ImageTools
                     else
                         colorIncidence.Add(pixelColor, 1);
                 }
+            // remove duplicate colours within tolerance
+            if (tolerance != 0)
+            {
+                var keys = colorIncidence.Keys.ToList();
+                foreach (var key in keys)
+                foreach (var key2 in keys.Where(key2 => Math.Abs(key - key2) <= tolerance && key != key2))
+                    colorIncidence[key] += colorIncidence[key2];
+            }
+
             return colorIncidence.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value).Take(count).Select(x => Color.FromArgb(x.Key)).ToList();
         }
 
