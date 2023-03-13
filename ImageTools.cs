@@ -34,7 +34,9 @@ namespace ImageTools
         {
             var directBitmap = new DirectBitmap(bmp.Width, bmp.Height);
             using (var graphics = Graphics.FromImage(directBitmap.Bitmap))
-                graphics.DrawImage(bmp, 0, 0);
+            {
+                graphics.DrawImageUnscaledAndClipped(bmp, new Rectangle( 0, 0, bmp.Width, bmp.Height));
+            }
             return directBitmap;
         }
 

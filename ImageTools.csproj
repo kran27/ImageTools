@@ -8,6 +8,7 @@
     <OutputType>Library</OutputType>
     <AssemblyName>ImageTools</AssemblyName>
     <TargetFrameworkVersion>v4.8</TargetFrameworkVersion>
+	<AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <ApplicationVersion>1.0.0.0</ApplicationVersion>
     <FileAlignment>512</FileAlignment>
     <RootNamespace>ImageTools</RootNamespace>
