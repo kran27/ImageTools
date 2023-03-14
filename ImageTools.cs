@@ -35,7 +35,7 @@ namespace ImageTools
             var directBitmap = new DirectBitmap(bmp.Width, bmp.Height);
             using (var graphics = Graphics.FromImage(directBitmap.Bitmap))
             {
-                graphics.DrawImageUnscaledAndClipped(bmp, new Rectangle( 0, 0, bmp.Width, bmp.Height));
+                graphics.DrawImageUnscaledAndClipped(bmp, new Rectangle(0, 0, bmp.Width, bmp.Height));
             }
             return directBitmap;
         }
@@ -439,8 +439,8 @@ namespace ImageTools
             {
                 var keys = colorIncidence.Keys.ToList();
                 foreach (var key in keys)
-                foreach (var key2 in keys.Where(key2 => Math.Abs(key - key2) <= tolerance && key != key2))
-                    colorIncidence[key] += colorIncidence[key2];
+                    foreach (var key2 in keys.Where(key2 => Math.Abs(key - key2) <= tolerance && key != key2))
+                        colorIncidence[key] += colorIncidence[key2];
             }
 
             return colorIncidence.OrderByDescending(x => x.Value).ToDictionary(x => x.Key, x => x.Value).Take(count).Select(x => Color.FromArgb(x.Key)).ToList();
@@ -471,10 +471,14 @@ namespace ImageTools
 
             public void SetPixel(int x, int y, Color colour)
             {
+                if (!new Rectangle(0, 0, Width, Height).Contains(new Point(x, y))) return;
                 Bits[x + y * Width] = colour.ToArgb();
             }
 
-            public Color GetPixel(int x, int y) => Color.FromArgb(Bits[x + y * Width]);
+            public Color GetPixel(int x, int y)
+            {
+                return !new Rectangle(0, 0, Width, Height).Contains(new Point(x, y)) ? Color.Black : Color.FromArgb(Bits[x + y * Width]);
+            }
 
             public void Dispose()
             {
